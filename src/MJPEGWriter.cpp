@@ -1,4 +1,4 @@
-#include "MJPEGWriter.h"
+#include "include/MJPEGWriter.h"
 
 bool MJPEGWriter::ViewerExists() const
 {
