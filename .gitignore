@@ -34,3 +34,7 @@
 build
 
 *./swp
+*.autosave
+
+#QT
+CMakeLists.txt.user
