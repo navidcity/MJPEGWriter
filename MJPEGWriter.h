@@ -1,4 +1,3 @@
-#include <unistd.h>
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -6,6 +5,10 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <opencv2/opencv.hpp>
+#include <atomic>
+#include <unistd.h>
+#include <iostream>
 #define PORT        unsigned short
 #define SOCKET    int
 #define HOSTENT  struct hostent
@@ -18,35 +21,33 @@
 #define NUM_CONNECTIONS 10
 
 #include <pthread.h>
-#include <iostream>
-#include <stdio.h>
-#include <string.h>
-#include "opencv2/opencv.hpp"
 
 using namespace cv;
 using namespace std;
 
-struct clientFrame {
-    uchar* outbuf;
-    int outlen;
-    int client;
-};
-
-struct clientPayload {
-    void* context;
-    clientFrame cf;
-};
-
 class MJPEGWriter{
+
+    struct clientFrame {
+        uchar* outbuf;
+        int outlen;
+        int client;
+    };
+
+    struct clientPayload {
+        void* context;
+        clientFrame cf;
+    };
+
+    std::atomic_bool IsViewer {};
     SOCKET sock;
     fd_set master;
     int timeout;
     int quality; // jpeg compression [1..100]
     std::vector<int> clients;
     pthread_t thread_listen, thread_write;
-    pthread_mutex_t mutex_client = PTHREAD_MUTEX_INITIALIZER;
-    pthread_mutex_t mutex_cout = PTHREAD_MUTEX_INITIALIZER;
-    pthread_mutex_t mutex_writer = PTHREAD_MUTEX_INITIALIZER;
+    mutable pthread_mutex_t mutex_client = PTHREAD_MUTEX_INITIALIZER;
+    mutable pthread_mutex_t mutex_cout = PTHREAD_MUTEX_INITIALIZER;
+    mutable pthread_mutex_t mutex_writer = PTHREAD_MUTEX_INITIALIZER;
     Mat lastFrame;
     int port;
 
@@ -54,26 +55,26 @@ class MJPEGWriter{
     {
         if (len < 1) { len = strlen(s); }
         {
-        	try
-        	{
-        		int retval = ::send(sock, s, len, 0x4000);
-        		return retval;
-        	}
-        	catch (int e)
-        	{
-        		cout << "An exception occurred. Exception Nr. " << e << '\n';
-        	}
+            try
+            {
+                int retval = ::send(sock, s, len, 0x4000);
+                return retval;
+            }
+            catch (int e)
+            {
+                cerr << "An exception occurred. Exception Nr. " << e << endl;;
+            }
         }
         return -1;
     }
-    
+
     int _read(int socket, char* buffer)
     {
         int result;
         result = recv(socket, buffer, 4096, MSG_PEEK);
         if (result < 0 )
         {
-            cout << "An exception occurred. Exception Nr. " << result << '\n';
+            cerr <<"An exception occurred. Exception Nr. " << result << endl;
             return result;
         }
         string s = buffer;
@@ -106,14 +107,58 @@ public:
     MJPEGWriter(int port = 0)
         : sock(INVALID_SOCKET)
         , timeout(TIMEOUT_M)
-        , quality(90)
-	, port(port)
+        , quality(80)
+        , port(port)
     {
         signal(SIGPIPE, SIG_IGN);
         FD_ZERO(&master);
         // if (port)
         //     open(port);
     }
+
+    //Swap idiom
+    auto swap(MJPEGWriter& rhs) noexcept(true)
+    {
+        using std::swap;
+        swap(this->sock, rhs.sock);
+        swap(this->master, rhs.master);
+        swap(this->timeout, rhs.timeout);
+        swap(this->quality, rhs.quality);
+        swap(this->port, rhs.port);
+        swap(this->lastFrame, rhs.lastFrame);
+    }
+
+    friend auto swap(MJPEGWriter& lhs, MJPEGWriter& rhs) noexcept(true)
+    {
+        lhs.swap(rhs);
+    }
+
+    //Copy semantic
+    MJPEGWriter(const MJPEGWriter& RHS)
+    {
+        this->IsViewer.store(RHS.IsViewer.load());
+        this->sock = RHS.sock;
+        this->master = RHS.master;
+        this->timeout = RHS.timeout;
+        this->quality = RHS.quality;
+        this->port = RHS.port;
+        this->lastFrame = RHS.lastFrame;
+    }
+
+    MJPEGWriter &operator=(MJPEGWriter RHS)
+    {
+        this->IsViewer.store(RHS.IsViewer.load());
+        RHS.swap(*this);
+        return *this;
+    }
+
+    //Move semantic
+    MJPEGWriter (MJPEGWriter&& Other) noexcept(true)
+        :MJPEGWriter()
+    {
+        this->IsViewer.store(Other.IsViewer.load());
+        this->swap(Other);
+    };
 
     ~MJPEGWriter()
     {
@@ -138,12 +183,12 @@ public:
         address.sin_port = htons(port);
         if (::bind(sock, (SOCKADDR*)&address, sizeof(SOCKADDR_IN)) == SOCKET_ERROR)
         {
-            cerr << "error : couldn't bind sock " << sock << " to port " << port << "!" << endl;
+            SHOW_ERROR("error : couldn't bind sock " << sock << " to port " << port << "!");
             return release();
         }
         if (listen(sock, NUM_CONNECTIONS) == SOCKET_ERROR)
         {
-            cerr << "error : couldn't listen on sock " << sock << " on port " << port << " !" << endl;
+            SHOW_ERROR("error : couldn't listen on sock " << sock << " on port " << port << " !");
             return release();
         }
         FD_SET(sock, &master);
@@ -162,19 +207,20 @@ public:
     }
 
     void stop(){
-    	this->release();
+        this->release();
         pthread_join(thread_listen, NULL);
         pthread_join(thread_write, NULL);
     }
 
-    void write(Mat frame){
-    	pthread_mutex_lock(&mutex_writer);
-    	if(!frame.empty()){
-    		lastFrame.release();
-    		lastFrame = frame.clone();
-    	}
-    	pthread_mutex_unlock(&mutex_writer);
+    void write(Mat const &frame){
+        pthread_mutex_lock(&mutex_writer);
+        Auto(pthread_mutex_unlock(&mutex_writer));
+        lastFrame = frame.clone();
     }
+
+    void setPort(int value);
+
+    auto ViewerExists() const ->bool;
 
 private:
     void Listener();
