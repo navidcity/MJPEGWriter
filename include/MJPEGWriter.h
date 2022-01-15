@@ -22,6 +22,8 @@
 
 #include <pthread.h>
 
+#include "src/auto.h"
+
 using namespace cv;
 using namespace std;
 
@@ -183,12 +185,12 @@ public:
         address.sin_port = htons(port);
         if (::bind(sock, (SOCKADDR*)&address, sizeof(SOCKADDR_IN)) == SOCKET_ERROR)
         {
-            SHOW_ERROR("error : couldn't bind sock " << sock << " to port " << port << "!");
+            cerr << "error : couldn't bind sock " << sock << " to port " << port << "!" << endl;
             return release();
         }
         if (listen(sock, NUM_CONNECTIONS) == SOCKET_ERROR)
         {
-            SHOW_ERROR("error : couldn't listen on sock " << sock << " on port " << port << " !");
+            cerr << "error : couldn't listen on sock " << sock << " on port " << port << " !" << endl;
             return release();
         }
         FD_SET(sock, &master);
