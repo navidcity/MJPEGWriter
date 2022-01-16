@@ -1,9 +1,16 @@
 #include "include/MJPEGWriter.h"
+#include "src/auto.h"
 using namespace Streamer;
 
 bool MJPEGWriter::ViewerExists() const
 {
     return IsViewer;
+}
+
+void MJPEGWriter::write(const cv::Mat &frame){
+    pthread_mutex_lock(&mutex_writer);
+    Auto(pthread_mutex_unlock(&mutex_writer));
+    lastFrame = frame.clone();
 }
 
 void MJPEGWriter::setPort(int value)

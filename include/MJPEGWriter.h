@@ -22,8 +22,6 @@
 
 #include <pthread.h>
 
-#include "src/auto.h"
-
 namespace Streamer
 {
 
@@ -218,11 +216,7 @@ public:
         pthread_join(thread_write, NULL);
     }
 
-    void write(cv::Mat const &frame){
-        pthread_mutex_lock(&mutex_writer);
-        Auto(pthread_mutex_unlock(&mutex_writer));
-        lastFrame = frame.clone();
-    }
+    void write(cv::Mat const &frame);
 
     void setPort(int value);
 
