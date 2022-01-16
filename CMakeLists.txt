@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.9)
 # Define the project name, language, version and description
 project(MJPEGWriter
     LANGUAGES CXX
-    VERSION 1.0.1
+    VERSION 0.0.1
     DESCRIPTION "OpenCV Video HTTP Streaming via MJPEG")
 
 # Set required C++ standard
