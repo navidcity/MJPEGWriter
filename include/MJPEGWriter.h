@@ -24,8 +24,12 @@
 
 #include "src/auto.h"
 
-using namespace cv;
-using namespace std;
+namespace Streamer
+{
+
+using std::cout;
+using std::cerr;
+using std::endl;
 
 class MJPEGWriter{
 
@@ -50,7 +54,7 @@ class MJPEGWriter{
     mutable pthread_mutex_t mutex_client = PTHREAD_MUTEX_INITIALIZER;
     mutable pthread_mutex_t mutex_cout = PTHREAD_MUTEX_INITIALIZER;
     mutable pthread_mutex_t mutex_writer = PTHREAD_MUTEX_INITIALIZER;
-    Mat lastFrame;
+    cv::Mat lastFrame;
     int port;
 
     int _write(int sock, char *s, int len)
@@ -79,7 +83,7 @@ class MJPEGWriter{
             cerr <<"An exception occurred. Exception Nr. " << result << endl;
             return result;
         }
-        string s = buffer;
+        std::string s = buffer;
         buffer = (char*) s.substr(0, (int) result).c_str();
         return result;
     }
@@ -214,7 +218,7 @@ public:
         pthread_join(thread_write, NULL);
     }
 
-    void write(Mat const &frame){
+    void write(cv::Mat const &frame){
         pthread_mutex_lock(&mutex_writer);
         Auto(pthread_mutex_unlock(&mutex_writer));
         lastFrame = frame.clone();
@@ -229,3 +233,5 @@ private:
     void Writer();
     void ClientWrite(clientFrame &cf);
 };
+
+} //namespace streamer

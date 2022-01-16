@@ -1,4 +1,5 @@
 #include "include/MJPEGWriter.h"
+using namespace Streamer;
 
 bool MJPEGWriter::ViewerExists() const
 {
@@ -130,7 +131,7 @@ MJPEGWriter::Writer()
 void
 MJPEGWriter::ClientWrite(clientFrame & cf)
 {
-    stringstream head;
+    std::stringstream head;
     head << "--mjpegstream\r\nContent-Type: image/jpeg\r\nContent-Length: " << cf.outlen << "\r\n\r\n";
     auto const string_head = head.str();
     pthread_mutex_lock(&mutex_client);
