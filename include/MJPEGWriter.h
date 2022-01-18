@@ -233,4 +233,4 @@ private:
 
 } //namespace streamer
 
-#endif MJPEGWRITER_H
+#endif //MJPEGWRITER_H
