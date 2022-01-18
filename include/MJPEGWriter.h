@@ -1,3 +1,6 @@
+#ifndef MJPEGWRITER_H
+#define MJPEGWRITER_H
+
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -229,3 +232,5 @@ private:
 };
 
 } //namespace streamer
+
+#endif MJPEGWRITER_H
